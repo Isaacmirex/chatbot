@@ -1,10 +1,10 @@
 import os
-from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
+from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
-import chatbot_app.routing  # <-- crea esto luego
+import chatbot_app.routing  # ajusta al nombre de tu app
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "chatbot.settings")
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'chatbot.settings')
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
@@ -14,3 +14,4 @@ application = ProtocolTypeRouter({
         )
     ),
 })
+

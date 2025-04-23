@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-vx3mke+45w=x7lzou8rxi@nswu1(16oc1_@z@ghc0+sutg9$sb
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -37,8 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'chatbot_app',
     'channels',
+    'chatbot_app',
+    
 ]
 
 MIDDLEWARE = [
@@ -68,9 +69,19 @@ TEMPLATES = [
         },
     },
 ]
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 
 WSGI_APPLICATION = 'chatbot.wsgi.application'
-ASGI_APPLICATION = "chatbot.asgi.application"
+ASGI_APPLICATION = 'chatbot.asgi.application'
+
+# después de ASGI_APPLICATION = "chatbot.asgi.application"
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
+
+TIME_ZONE = 'America/Guayaquil'
 
 
 # Database

@@ -1,3 +1,6 @@
+# chatbot_app/views.py
 from django.shortcuts import render
 
-# Create your views here.
+def chat_view(request):
+    # Renderiza la plantilla chat.html
+    return render(request, "chat.html")

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Chatbot Lostsys</title>
+<style>
+ *{margin:0;padding:0;box-sizing:border-box}
+ body{font-family:Arial,sans-serif;background:#f5f5f5;height:100vh;display:flex;flex-direction:column}
+ .chat{flex:1;padding:1rem;overflow-y:auto;display:flex;flex-direction:column}
+ .msg{max-width:70%;margin-bottom:.75rem;padding:.5rem .75rem;border-radius:12px;line-height:1.4}
+ .bot{background:#fff;align-self:flex-start;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+ .user{background:#dcf8c6;align-self:flex-end;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+ footer{display:flex;gap:.5rem;background:#eee;padding:.5rem}
+ textarea{flex:1;border:1px solid #ccc;border-radius:6px;padding:.5rem;font-size:1rem;resize:none;max-height:150px}
+ button{padding:.6rem 1.2rem;background:#007bff;color:#fff;border:none;border-radius:6px;font-size:1rem;cursor:pointer}
+ button:disabled{background:#999;cursor:not-allowed}
+
+/* ───── animación puntitos ───── */
+.loading::after{
+  content:""; display:inline-block; width:1.2em; text-align:left;
+  animation: dots 1s steps(3,end) infinite;
+}
+@keyframes dots{ 0%{content:"";} 33%{content:".";} 66%{content:"..";} 100%{content:"...";} }
+</style>
+</head>
+<body>
+
+<main id="chat" class="chat"></main>
+
+<footer>
+  <textarea id="input" rows="1" placeholder="Escribe…" oninput="autoResize(this)"></textarea>
+  <button   id="send" disabled>Enviar</button>
+</footer>
+
+<script>
+const chat = document.getElementById("chat");
+const inp  = document.getElementById("input");
+const btn  = document.getElementById("send");
+
+/* ---------------- helpers ---------------- */
+function autoResize(t){t.style.height='auto';t.style.height=t.scrollHeight+'px';btn.disabled=!t.value.trim();}
+function bubble(cls,txt=""){const d=document.createElement("div");d.className=`msg ${cls}`;d.textContent=txt;chat.append(d);chat.scrollTop=chat.scrollHeight;return d;}
+
+/* ---------------- WebSocket ---------------- */
+const ws=new WebSocket(`ws://${location.host}/ws/chat/`);
+
+ws.onopen =()=>bubble("bot","🤖 Conexión establecida.");
+ws.onerror=()=>bubble("bot","⚠️ Error de conexión.");
+ws.onclose=()=>bubble("bot","⚠️ Conexión cerrada.");
+
+let currentBot=null;          // burbuja que se rellena
+let firstToken=true;          // para quitar animación al llegar el primer token
+
+ws.onmessage=({data})=>{
+  const msg=JSON.parse(data);
+
+  if(msg.type==="info"){bubble("bot",msg.content);return;}
+
+  /* tokens en streaming */
+  if(msg.type==="stream"){
+     if(!currentBot){                    // crea burbuja loading si no existía
+        currentBot=bubble("bot","");
+        currentBot.classList.add("loading");
+        firstToken=true;
+     }
+     if(firstToken){                     // quita animación en el primer token
+        currentBot.classList.remove("loading");
+        currentBot.textContent="";       // limpia los puntos
+        firstToken=false;
+     }
+     currentBot.textContent+=msg.content;
+     chat.scrollTop=chat.scrollHeight;
+  }
+
+  if(msg.type==="done"){                 // fin de respuesta
+     currentBot=null;
+  }
+};
+
+/* ---------------- envío ---------------- */
+btn.onclick=()=>{
+  const text=inp.value.trim();
+  if(!text)return;
+
+  bubble("user",text);
+
+  currentBot=bubble("bot","");           // burbuja vacía + animación
+  currentBot.classList.add("loading");
+  firstToken=true;
+
+  ws.send(JSON.stringify({message:text}));
+  inp.value=""; autoResize(inp);
+};
+</script>
+</body>
+</html>
