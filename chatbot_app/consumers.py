@@ -50,7 +50,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             kwargs=dict(
                 inputs=input_ids,
                 streamer=streamer,
-                max_new_tokens=256,
+                max_new_tokens=500,
                 temperature=0.9
             ),
             daemon=True
