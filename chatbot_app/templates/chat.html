@@ -1,231 +1,231 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Chatbot Lostsys</title>
-
-<style>
-/* —— variables corporativas (Manual UTN) —— */
-:root{
-  --brand-red:   #d20a11;
-  --brand-gray:  #706f6f;
-  --bg-light:    #f5f5f5;
-  --chat-bg:     #ffffff;
-  --bot-bg:      #ffffff;
-  --bot-text:    #000;
-  --user-bg:     var(--brand-red);
-  --user-text:   #ffffff;
-}
-body.dark{
-  --bg-light:    #121212;
-  --chat-bg:     #1e1e1e;
-  --bot-bg:      #2a2a2a;
-  --bot-text:    #e0e0e0;
-  --user-bg:     var(--brand-red);
-  --user-text:   #ffffff;
-}
-
-/* —— reset & layout —— */
-*{margin:0;padding:0;box-sizing:border-box}
-body{
-  font-family:"Helvetica Neue",Arial,sans-serif;
-  background:var(--bg-light);
-  color:var(--bot-text);
-  height:100vh;
-  display:flex;
-  flex-direction:column;
-}
-
-/* —— chat —— */
-.chat{
-  flex:1;
-  padding:1rem;
-  overflow-y:auto;
-  display:flex;
-  flex-direction:column;
-  gap:.75rem;
-  background:var(--chat-bg);
-}
-.msg{
-  max-width:70%;
-  padding:.5rem .75rem;
-  border-radius:12px;
-  line-height:1.4;
-  word-wrap:break-word;
-  white-space:pre-wrap;
-}
-.bot{
-  background:var(--bot-bg);
-  color:var(--bot-text);
-  align-self:flex-start;
-}
-.user{
-  background:var(--user-bg);
-  color:var(--user-text);
-  align-self:flex-end;
-}
-
-/* —— footer —— */
-footer{
-  display:flex;
-  gap:.5rem;
-  background:#eee;
-  padding:.5rem;
-}
-textarea{
-  flex:1;
-  border:1px solid #ccc;
-  border-radius:6px;
-  padding:.5rem;
-  font-size:1rem;
-  resize:none;
-  max-height:150px;
-  background:#fff;
-}
-button#send{
-  padding:.6rem 1.2rem;
-  background:var(--brand-red);
-  color:#fff;
-  border:none;
-  border-radius:6px;
-  font-size:1rem;
-  cursor:pointer;
-}
-button:disabled{background:#999;cursor:not-allowed;}
-
-#toggleDark{
-  background:var(--bot-bg);
-  border:1px solid var(--brand-gray);
-  padding:.6rem;
-  border-radius:6px;
-  cursor:pointer;
-}
-
-/* —— animación puntitos —— */
-.loading::after{
-  content:"";display:inline-block;width:1.2em;text-align:left;
-  animation:dots 1s steps(3,end) infinite;
-}
-@keyframes dots{
-  0%{content:"";}
-  33%{content:".";}
-  66%{content:"..";}
-  100%{content:"...";}
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatbot FICA</title>
+  <style>
+    :root {
+      --brand-red: #d20a11;
+      --brand-gray: #706f6f;
+      --bg-light: #f5f5f5;
+      --chat-bg: #ffffff;
+      --bot-bg: #ffffff;
+      --bot-text: #000000;
+      --user-bg: var(--brand-red);
+      --user-text: #ffffff;
+    }
+    body.dark {
+      --bg-light: #121212;
+      --chat-bg: #1e1e1e;
+      --bot-bg: #2a2a2a;
+      --bot-text: #e0e0e0;
+      --user-bg: var(--brand-red);
+      --user-text: #ffffff;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg-light);
+      color: var(--bot-text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+      background: var(--chat-bg);
+    }
+    .msg {
+      max-width: 70%;
+      padding: .5rem .75rem;
+      border-radius: 12px;
+      line-height: 1.4;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+    .bot {
+      background: var(--bot-bg);
+      color: var(--bot-text);
+      align-self: flex-start;
+    }
+    .user {
+      background: var(--user-bg);
+      color: var(--user-text);
+      align-self: flex-end;
+    }
+    footer {
+      display: flex;
+      gap: .5rem;
+      background: #eee;
+      padding: .5rem;
+    }
+    textarea {
+      flex: 1;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: .5rem;
+      font-size: 1rem;
+      resize: none;
+      max-height: 150px;
+      background: #fff;
+    }
+    button {
+      padding: .6rem 1.2rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+    #actionBtn {
+      background: var(--brand-red);
+      color: #fff;
+    }
+    #toggleDark {
+      background: var(--bot-bg);
+      border: 1px solid var(--brand-gray);
+    }
+    .loading::after {
+      content: "";
+      display: inline-block;
+      width: 1.2em;
+      text-align: left;
+      animation: dots 1s steps(3,end) infinite;
+    }
+    @keyframes dots {
+      0% { content: ""; }
+      33% { content: "."; }
+      66% { content: ".."; }
+      100% { content: "..."; }
+    }
+  </style>
 </head>
-
 <body>
-<main id="chat" class="chat"></main>
+  <main id="chat" class="chat"></main>
+  <footer>
+    <textarea id="input" rows="1" placeholder="Escribe…"></textarea>
+    <button id="actionBtn" disabled>Enviar</button>
+    <button id="toggleDark" title="Modo oscuro/claro">🌓</button>
+  </footer>
+  <script>
+    const chat = document.getElementById("chat");
+    const inp = document.getElementById("input");
+    const actionBtn = document.getElementById("actionBtn");
+    const darkBtn = document.getElementById("toggleDark");
 
-<footer>
-  <textarea id="input" rows="1" placeholder="Escribe…" oninput="autoResize(this)"></textarea>
-  <button id="send" disabled>Enviar</button>
-  <button id="toggleDark" title="Modo oscuro/claro">🌓</button>
-</footer>
+    let generating = false;
+    let skipStream = false;
+    let currentBot = null;
+    let firstToken = true;
 
-<script>
-const chat     = document.getElementById("chat");
-const inp      = document.getElementById("input");
-const btn      = document.getElementById("send");
-const darkBtn  = document.getElementById("toggleDark");
-
-/* —— helpers —— */
-function autoResize(t){
-  t.style.height='auto';
-  t.style.height=t.scrollHeight+'px';
-  btn.disabled=!t.value.trim();
-}
-function atBottom(){
-  return chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 10;
-}
-function bubble(cls, txt=""){
-  const d=document.createElement("div");
-  d.className=`msg ${cls}`;
-  d.textContent=txt;
-  chat.append(d);
-  if(atBottom()) chat.scrollTop=chat.scrollHeight;
-  return d;
-}
-
-/* —— WebSocket —— */
-const ws=new WebSocket(`ws://${location.host}/ws/chat/`);
-
-ws.onopen  = ()=>bubble("bot","🤖 Conexión establecida.");
-ws.onerror = ()=>bubble("bot","⚠️ Error de conexión.");
-ws.onclose = ()=>bubble("bot","⚠️ Conexión cerrada.");
-
-let currentBot=null;
-let firstToken=true;
-
-ws.onmessage=({data})=>{
-  const msg=JSON.parse(data);
-
-  if(msg.type==="info"){
-    bubble("bot",msg.content);
-    return;
-  }
-
-  if(msg.type==="stream"){
-    if(!currentBot){
-      currentBot=bubble("bot","");
-      currentBot.classList.add("loading");
-      firstToken=true;
+    function autoResize() {
+      inp.style.height = 'auto';
+      inp.style.height = inp.scrollHeight + 'px';
+      actionBtn.disabled = generating || !inp.value.trim();
     }
 
-    let chunk=msg.content;
-
-    if(firstToken){
-      // limpia y añade prefijo “Lostsys: ”
-      chunk = chunk.replace(/^assistant[\s:,-]*/i,"")
-                   .replace(/\bassistant\b/gi,"")
-                   .trimStart();
-      chunk = "FicaAssistant: " + chunk;
-      currentBot.classList.remove("loading");
-      currentBot.textContent="";
-      firstToken=false;
+    function atBottom() {
+      return chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 10;
     }
 
-    // si llegasen más “assistant” dentro del flujo, los quita
-    chunk = chunk.replace(/\bassistant\b/gi,"");
+    function bubble(cls, txt = "") {
+      const d = document.createElement("div");
+      d.className = `msg ${cls}`;
+      d.textContent = txt;
+      chat.append(d);
+      if (atBottom()) chat.scrollTop = chat.scrollHeight;
+      return d;
+    }
 
-    currentBot.textContent+=chunk;
-    if(atBottom()) chat.scrollTop=chat.scrollHeight;
-  }
+    inp.addEventListener('input', autoResize);
 
-  if(msg.type==="done"){
-    currentBot=null;
-  }
-};
+    const ws = new WebSocket(`ws://${location.host}/ws/chat/`);
+    ws.onopen = () => {
+      bubble('bot', '🤖 Conexión establecida.');
+      bubble('bot', 'Hola, mucho gusto, soy tu asistente. ¿En qué puedo ayudarte?');
+    };
+    ws.onerror = () => bubble('bot', '⚠️ Error de conexión.');
+    ws.onclose = () => bubble('bot', '⚠️ Conexión cerrada.');
 
-/* —— envío —— */
-function sendMessage(){
-  const text=inp.value.trim();
-  if(!text) return;
+    ws.onmessage = ({ data }) => {
+      const msg = JSON.parse(data);
+      if (msg.type === 'stream' && (skipStream || !generating)) return;
 
-  bubble("user",text);
+      if (msg.type === 'stream') {
+        if (!currentBot) {
+          currentBot = bubble('bot', '');
+          currentBot.classList.add('loading');
+          firstToken = true;
+        }
+        let chunk = msg.content;
+        if (firstToken) {
+          chunk = chunk
+            .replace(/^assistant[\s:,-]*/i, '')
+            .replace(/\bassistant\b/gi, '')
+            .trimStart();
+          chunk = 'FicaAssistant: ' + chunk;
+          currentBot.classList.remove('loading');
+          currentBot.textContent = '';
+          firstToken = false;
+        }
+        currentBot.textContent += chunk.replace(/\bassistant\b/gi, '');
+        if (atBottom()) chat.scrollTop = chat.scrollHeight;
+        return;
+      }
 
-  currentBot=bubble("bot","");
-  currentBot.classList.add("loading");
-  firstToken=true;
+      if (msg.type === 'done') {
+        finishResponse();
+        return;
+      }
 
-  ws.send(JSON.stringify({message:text}));
-  inp.value=""; autoResize(inp);
-}
+      if (msg.type === 'cancelled') {
+        skipStream = true;
+        finishResponse('[Detenido]');
+      }
+    };
 
-btn.onclick=sendMessage;
+    function finishResponse(suffix = '') {
+      generating = false;
+      actionBtn.textContent = 'Enviar';
+      if (currentBot) {
+        currentBot.classList.remove('loading');
+        currentBot.textContent += suffix;
+        currentBot = null;
+      }
+      autoResize();
+    }
 
-/* Enter = enviar / Shift+Enter = salto de línea */
-inp.addEventListener("keydown",e=>{
-  if(e.key==="Enter" && !e.shiftKey){
-    e.preventDefault();
-    sendMessage();
-  }
-});
+    actionBtn.addEventListener('click', () => {
+      if (generating) return;
+      const text = inp.value.trim();
+      if (!text) return;
+      bubble('user', text);
+      skipStream = false;
+      ws.send(JSON.stringify({ message: text }));
+      inp.value = '';
+      generating = true;
+      actionBtn.color = '#fff';
+      actionBtn.textContent = 'Generando';
+      autoResize();
+    });
 
-/* —— modo oscuro —— */
-darkBtn.onclick=()=>document.body.classList.toggle("dark");
-</script>
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        actionBtn.click();
+      }
+    });
+
+    darkBtn.onclick = () => document.body.classList.toggle('dark');
+  </script>
 </body>
 </html>
