@@ -118,25 +118,26 @@
   </footer>
   <script>
     const chat = document.getElementById("chat");
-    const inp = document.getElementById("input");
+    const inp  = document.getElementById("input");
     const actionBtn = document.getElementById("actionBtn");
-    const darkBtn = document.getElementById("toggleDark");
-
+    const darkBtn   = document.getElementById("toggleDark");
+  
     let generating = false;
-    let skipStream = false;
-    let currentBot = null;
-    let firstToken = true;
-
+    let skipStream  = false;
+    let currentBot  = null;
+    let firstToken  = true;
+  
+    /* ───────── Utilidades de interfaz ───────── */
     function autoResize() {
-      inp.style.height = 'auto';
-      inp.style.height = inp.scrollHeight + 'px';
+      inp.style.height = "auto";
+      inp.style.height = inp.scrollHeight + "px";
       actionBtn.disabled = generating || !inp.value.trim();
     }
-
+  
     function atBottom() {
       return chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 10;
     }
-
+  
     function bubble(cls, txt = "") {
       const d = document.createElement("div");
       d.className = `msg ${cls}`;
@@ -145,87 +146,91 @@
       if (atBottom()) chat.scrollTop = chat.scrollHeight;
       return d;
     }
-
-    inp.addEventListener('input', autoResize);
-
-    const ws = new WebSocket(`ws://${location.host}/ws/chat/`);
-    ws.onopen = () => {
-      bubble('bot', '🤖 Conexión establecida.');
-      bubble('bot', 'Hola, mucho gusto, soy tu asistente. ¿En qué puedo ayudarte?');
+  
+    inp.addEventListener("input", autoResize);
+  
+    /* ───────── Conexión WebSocket (http ⇢ ws, https ⇢ wss) ───────── */
+    const WS_SCHEME = window.location.protocol === "https:" ? "wss://" : "ws://";
+    const ws = new WebSocket(`${WS_SCHEME}${window.location.host}/ws/chat/`);
+  
+    ws.onopen  = () => {
+      bubble("bot", "🤖 Conexión establecida.");
+      bubble("bot", "Hola, mucho gusto, soy tu asistente. ¿En qué puedo ayudarte?");
     };
-    ws.onerror = () => bubble('bot', '⚠️ Error de conexión.');
-    ws.onclose = () => bubble('bot', '⚠️ Conexión cerrada.');
-
+    ws.onerror = () => bubble("bot", "⚠️ Error de conexión.");
+    ws.onclose = () => bubble("bot", "⚠️ Conexión cerrada.");
+  
     ws.onmessage = ({ data }) => {
       const msg = JSON.parse(data);
-      if (msg.type === 'stream' && (skipStream || !generating)) return;
-
-      if (msg.type === 'stream') {
+      if (msg.type === "stream" && (skipStream || !generating)) return;
+  
+      if (msg.type === "stream") {
         if (!currentBot) {
-          currentBot = bubble('bot', '');
-          currentBot.classList.add('loading');
+          currentBot = bubble("bot", "");
+          currentBot.classList.add("loading");
           firstToken = true;
         }
         let chunk = msg.content;
         if (firstToken) {
           chunk = chunk
-            .replace(/^assistant[\s:,-]*/i, '')
-            .replace(/\bassistant\b/gi, '')
+            .replace(/^assistant[\s:,-]*/i, "")
+            .replace(/\bassistant\b/gi, "")
             .trimStart();
-          chunk = 'FicaAssistant: ' + chunk;
-          currentBot.classList.remove('loading');
-          currentBot.textContent = '';
+          chunk = "FicaAssistant: " + chunk;
+          currentBot.classList.remove("loading");
+          currentBot.textContent = "";
           firstToken = false;
         }
-        currentBot.textContent += chunk.replace(/\bassistant\b/gi, '');
+        currentBot.textContent += chunk.replace(/\bassistant\b/gi, "");
         if (atBottom()) chat.scrollTop = chat.scrollHeight;
         return;
       }
-
-      if (msg.type === 'done') {
+  
+      if (msg.type === "done") {
         finishResponse();
         return;
       }
-
-      if (msg.type === 'cancelled') {
+  
+      if (msg.type === "cancelled") {
         skipStream = true;
-        finishResponse('[Detenido]');
+        finishResponse("[Detenido]");
       }
     };
-
-    function finishResponse(suffix = '') {
+  
+    function finishResponse(suffix = "") {
       generating = false;
-      actionBtn.textContent = 'Enviar';
+      actionBtn.textContent = "Enviar";
       if (currentBot) {
-        currentBot.classList.remove('loading');
+        currentBot.classList.remove("loading");
         currentBot.textContent += suffix;
         currentBot = null;
       }
       autoResize();
     }
-
-    actionBtn.addEventListener('click', () => {
+  
+    /* ───────── Eventos de envío ───────── */
+    actionBtn.addEventListener("click", () => {
       if (generating) return;
       const text = inp.value.trim();
       if (!text) return;
-      bubble('user', text);
+      bubble("user", text);
       skipStream = false;
       ws.send(JSON.stringify({ message: text }));
-      inp.value = '';
+      inp.value = "";
       generating = true;
-      actionBtn.color = '#fff';
-      actionBtn.textContent = 'Generando';
+      actionBtn.textContent = "Generando";
       autoResize();
     });
-
-    inp.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+  
+    inp.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         actionBtn.click();
       }
     });
-
-    darkBtn.onclick = () => document.body.classList.toggle('dark');
-  </script>
+  
+    /* ───────── Modo oscuro / claro ───────── */
+    darkBtn.onclick = () => document.body.classList.toggle("dark");
+  </script>  
 </body>
 </html>
