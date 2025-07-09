@@ -67,3 +67,7 @@ typing_extensions==4.13.2
 tzdata==2025.2
 urllib3==2.4.0
 zope.interface==7.2
+dj-database-url==2.1.0
+django-cors-headers==3.18.0
+
+
