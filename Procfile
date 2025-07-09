@@ -1,1 +1,1 @@
-web: gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT chatbot.asgi:application
+web: daphne -b 0.0.0.0 -p $PORT chatbot.asgi:application
