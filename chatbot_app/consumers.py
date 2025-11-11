@@ -1,3 +1,4 @@
+
 import json
 import time
 import asyncio
@@ -8,7 +9,6 @@ import torch
 from channels.generic.websocket import AsyncWebsocketConsumer
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
 
-# Ruta base y modelo
 BASE_DIR   = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "Llama-3.2-3B-trained"
 
@@ -77,7 +77,7 @@ Si el usuario te pregunta algo que no esté en la normativa:
 > “Lo siento, solo puedo responder preguntas relacionadas con la normativa oficial de la universidad. ¿Hay algo más en lo que pueda ayudarte dentro de ese tema?”
 """
 
-# Carga de tokenizer y modelo
+
 tokenizer = AutoTokenizer.from_pretrained(str(MODEL_PATH))
 model     = AutoModelForCausalLM.from_pretrained(
     str(MODEL_PATH),
@@ -92,36 +92,38 @@ class ChatConsumer(AsyncWebsocketConsumer):
         super().__init__(*args, **kwargs)
         self.history = []
         self.generating = False
-        self.stop_event = None
+        self.generation_thread = None
 
     async def connect(self):
         await self.accept()
         self.history = [{"role": "system", "content": SYSTEM_INSTRUCTION}]
-        print(f"[DEBUG] SYSTEM_INSTRUCTION length = {len(SYSTEM_INSTRUCTION)} characters")
+        print(f"[✅ CONNECT] Nueva conexión WebSocket")
 
     async def receive(self, text_data):
         data = json.loads(text_data)
 
-        # —————— Lógica de “Detener” ——————
-        if data.get("cancel") and self.generating and self.stop_event:
-            self.stop_event.set()
-            if self.history and self.history[-1]["role"] == "user":
-                self.history.pop()
-            # Importante: liberar el flag para permitir nuevos prompts
-            self.generating = False
+        # ✅ Restaurar historial previo
+        if data.get("restore_history"):
+            restored = data.get("history", [])
+            # Mantener el system prompt y agregar historial del usuario
+            self.history = [{"role": "system", "content": SYSTEM_INSTRUCTION}] + restored
+            print(f"[📥 HISTORY] Restaurados {len(restored)} mensajes")
+            await self.send_json({"type": "history_restored"})
             return
 
         user_msg = data.get("message", "").strip()
         if not user_msg:
             return
 
-        if self.generating and self.stop_event:
-            self.stop_event.set()
+        # ✅ Si ya está generando (no debería pasar), ignorar
+        if self.generating:
+            print("[⚠️ WARNING] Generación ya en curso, mensaje ignorado")
+            return
 
         self.history.append({"role": "user", "content": user_msg})
         self.generating = True
-        self.stop_event = threading.Event()
 
+        # Preparar historial para el prompt
         system_msg   = self.history[0]
         convo_turns  = self.history[1:]
         recent_turns = convo_turns[-self.MAX_HISTORY_TURNS:]
@@ -136,7 +138,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
         reply_buffer = []
 
-        threading.Thread(
+        # ✅ Guardar referencia al thread
+        self.generation_thread = threading.Thread(
             target=model.generate,
             kwargs=dict(
                 inputs=input_ids,
@@ -145,26 +148,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 temperature=0.9
             ),
             daemon=True
-        ).start()
+        )
+        self.generation_thread.start()
 
         start = time.time()
-        async for tok in self._stream_tokens(streamer):
-            if self.stop_event.is_set():
-                break
-            reply_buffer.append(tok)
-            await self.send_json({"type": "stream", "content": tok})
+        try:
+            async for tok in self._stream_tokens(streamer):
+                reply_buffer.append(tok)
+                await self.send_json({"type": "stream", "content": tok})
+        except Exception as e:
+            print(f"[❌ ERROR] Streaming error: {e}")
 
         self.generating = False
         full_reply = "".join(reply_buffer)
 
-        if not self.stop_event.is_set():
+        if full_reply.strip():
             self.history.append({"role": "assistant", "content": full_reply})
             await self.send_json({
                 "type": "done",
                 "latency_s": round(time.time() - start, 2)
             })
-        else:
-            await self.send_json({"type": "cancelled"})
 
     async def _stream_tokens(self, streamer):
         loop = asyncio.get_running_loop()
@@ -181,8 +184,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
             yield tok
 
     async def disconnect(self, code):
-        if self.generating and self.stop_event:
-            self.stop_event.set()
+        print(f"[🔌 DISCONNECT] WebSocket cerrado con código {code}")
+        # ✅ Al cerrar el WebSocket, el streamer se detiene automáticamente
+        # porque el cliente ya no puede recibir más tokens
+        self.generating = False
 
     async def send_json(self, obj):
-        await self.send(text_data=json.dumps(obj))
+        try:
+            await self.send(text_data=json.dumps(obj))
+        except Exception as e:
+            print(f"[❌ SEND ERROR] {e}")
+

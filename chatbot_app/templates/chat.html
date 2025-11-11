@@ -122,27 +122,24 @@
     const inp  = document.getElementById("input");
     const actionBtn = document.getElementById("actionBtn");
     const darkBtn   = document.getElementById("toggleDark");
-  
+
+    let ws = null;
     let generating = false;
-    let skipStream  = false; 
-    let currentBot  = null;
-    let firstToken  = true;
-  
-    /* ───────── Utilidades de interfaz ───────── */
+    let conversationHistory = [];
+    let currentBotBubble = null;
+    let currentBotText = "";
+    let wasCancelled = false;
+
     function autoResize() {
       inp.style.height = "auto";
       inp.style.height = inp.scrollHeight + "px";
-
-      // LÓGICA CLAVE:
-      // Se deshabilita SÓLO SI no está generando Y el input está vacío.
-      // Si 'generating' es true, el botón se HABILITA.
       actionBtn.disabled = !generating && !inp.value.trim();
     }
-  
+
     function atBottom() {
       return chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 10;
     }
-  
+
     function bubble(cls, txt = "") {
       const d = document.createElement("div");
       d.className = `msg ${cls}`;
@@ -151,117 +148,125 @@
       if (atBottom()) chat.scrollTop = chat.scrollHeight;
       return d;
     }
-  
+
     inp.addEventListener("input", autoResize);
-  
-    /* ───────── Conexión WebSocket ───────── */
-    const WS_SCHEME = window.location.protocol === "https:" ? "wss://" : "ws://";
-    const ws = new WebSocket(`${WS_SCHEME}${window.location.host}/ws/chat/`);
-  
-    ws.onopen  = () => {
-      bubble("bot", "🤖 Conexión establecida.");
-      bubble("bot", "Hola, mucho gusto, soy tu asistente. ¿En qué puedo ayudarte?");
-    };
-    ws.onerror = () => bubble("bot", "⚠️ Error de conexión.");
-    ws.onclose = () => bubble("bot", "⚠️ Conexión cerrada.");
-  
-    ws.onmessage = ({ data }) => {
-      const msg = JSON.parse(data);
 
-      // Si se canceló, ignora cualquier token "zombie" que llegue tarde
-      if (msg.type === "stream" && skipStream) {
-        console.log("Skipping zombie token:", msg.content);
-        return;
-      }
-  
-      if (msg.type === "stream") {
-        // Aseguramos el estado correcto mientras se genera
-        generating = true;
-        actionBtn.textContent = "Detener";
-        actionBtn.disabled = false;
-        
-        if (!currentBot) {
-          currentBot = bubble("bot", "");
-          currentBot.classList.add("loading");
-          firstToken = true;
+    function connectWebSocket() {
+      const WS_SCHEME = window.location.protocol === "https:" ? "wss://" : "ws://";
+      ws = new WebSocket(`${WS_SCHEME}${window.location.host}/ws/chat/`);
+
+      ws.onopen = () => {
+        if (conversationHistory.length > 0) {
+          ws.send(JSON.stringify({
+            restore_history: true,
+            history: conversationHistory
+          }));
+        } else {
+          bubble("bot", "🤖 Conexión establecida.");
+          bubble("bot", "Hola, mucho gusto, soy tu asistente. ¿En qué puedo ayudarte?");
         }
-        let chunk = msg.content;
-        if (firstToken) {
-          chunk = chunk
-            .replace(/^assistant[\s:,-]*/i, "")
-            .replace(/\bassistant\b/gi, "")
-            .trimStart();
-          chunk = "FicaAssistant: " + chunk;
-          currentBot.classList.remove("loading");
-          currentBot.textContent = "";
-          firstToken = false;
+      };
+
+      ws.onerror = () => bubble("bot", "⚠️ Error de conexión.");
+
+      ws.onclose = () => {
+        if (!wasCancelled) {
+          bubble("bot", "⚠️ Conexión cerrada.");
         }
-        currentBot.textContent += chunk.replace(/\bassistant\b/gi, "");
-        if (atBottom()) chat.scrollTop = chat.scrollHeight;
-        return;
-      }
-  
-      if (msg.type === "done") {
-        console.log("Stream done");
-        finishResponse();
-        return;
-      }
-  
-      if (msg.type === "cancelled") {
-        console.log("Stream cancelled by backend");
-        skipStream = true; // Por si acaso
-        finishResponse("[Detenido por el usuario]");
-      }
-    };
-  
-    function finishResponse(suffix = "") {
-      console.log("Finishing response");
-      generating = false;
-      skipStream = false; 
-      actionBtn.textContent = "Enviar";
-      
-      if (currentBot) {
-        currentBot.classList.remove("loading");
-        currentBot.textContent += suffix;
-        currentBot = null;
-      }
-      // Llamar a autoResize para que deshabilite el botón
-      // si el input está vacío.
-      autoResize(); 
+        wasCancelled = false;
+      };
+
+      ws.onmessage = ({ data }) => {
+        const msg = JSON.parse(data);
+
+        if (msg.type === "stream") {
+          generating = true;
+          actionBtn.textContent = "Detener";
+          actionBtn.disabled = false;
+
+          if (!currentBotBubble) {
+            currentBotBubble = bubble("bot", "");
+            currentBotBubble.classList.add("loading");
+            currentBotText = "";
+          }
+
+          let chunk = msg.content;
+          // Borra cualquier aparición de assistant o FicaAssistant
+          chunk = chunk.replace(/^assistant[\s:,-]*/i, "")
+                       .replace(/^FicaAssistant:\s*/i, "")
+                       .replace(/\bassistant\b/gi, "")
+                       .replace(/FicaAssistant:/gi, "")
+                       .trimStart();
+
+          currentBotText += chunk;
+          currentBotBubble.textContent = currentBotText;
+
+          if (atBottom()) chat.scrollTop = chat.scrollHeight;
+        }
+        if (msg.type === "done") {
+          finishResponse();
+        }
+        if (msg.type === "history_restored") {
+          // Opcional: log restauración de historial
+        }
+      };
     }
-  
-    /* ───────── Eventos de envío ───────── */
-    actionBtn.addEventListener("click", () => {
-      
-      if (generating) {
-        // --- LÓGICA DE CANCELAR (CORREGIDA) ---
-        console.log("CANCEL button clicked");
-        ws.send(JSON.stringify({ cancel: true }));
-        skipStream = true;
-        
-        // NO llamar a finishResponse aquí.
-        // Solo dar feedback visual inmediato.
-        actionBtn.textContent = "Deteniendo...";
-        actionBtn.disabled = true; // Deshabilitar HASTA que el backend confirme.
 
+    function finishResponse(suffix = "") {
+      generating = false;
+      actionBtn.textContent = "Enviar";
+      actionBtn.disabled = false;
+
+      if (currentBotBubble) {
+        currentBotBubble.classList.remove("loading");
+        if (suffix) currentBotBubble.textContent += suffix;
+
+        conversationHistory.push({
+          role: "assistant",
+          content: currentBotText
+        });
+
+        currentBotBubble = null;
+        currentBotText = "";
+      }
+      autoResize();
+    }
+
+    actionBtn.addEventListener("click", () => {
+      if (generating) {
+        wasCancelled = true;
+        if (currentBotBubble) {
+          currentBotBubble.textContent += " [Detenido]";
+          currentBotBubble.classList.remove("loading");
+          conversationHistory.push({
+            role: "assistant",
+            content: currentBotText + " [Detenido]"
+          });
+          currentBotBubble = null;
+          currentBotText = "";
+        }
+        ws.close();
+        generating = false;
+        actionBtn.textContent = "Enviar";
+        setTimeout(() => {
+          connectWebSocket();
+        }, 500);
       } else {
-        // --- LÓGICA DE ENVIAR ---
-        console.log("SEND button clicked");
         const text = inp.value.trim();
         if (!text) return;
-        
+
         bubble("user", text);
-        skipStream = false;
-        firstToken = true; 
+        conversationHistory.push({
+          role: "user",
+          content: text
+        });
+
         ws.send(JSON.stringify({ message: text }));
-        
         inp.value = "";
-        generating = true;
-        actionBtn.textContent = "Detener"; // ¡Texto correcto!
-        actionBtn.disabled = false; // ¡Habilitar explícitamente!
+        autoResize();
       }
     });
-  
+
     inp.addEventListener("keydown", e => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -271,8 +276,8 @@
       }
     });
 
-    /* ───────── Modo oscuro / claro ───────── */
     darkBtn.onclick = () => document.body.classList.toggle("dark");
+    connectWebSocket();
   </script>
 </body>
 </html>
