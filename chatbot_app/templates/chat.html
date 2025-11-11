@@ -116,6 +116,7 @@
     <button id="actionBtn" disabled>Enviar</button>
     <button id="toggleDark" title="Modo oscuro/claro">🌓</button>
   </footer>
+
   <script>
     const chat = document.getElementById("chat");
     const inp  = document.getElementById("input");
@@ -123,7 +124,7 @@
     const darkBtn   = document.getElementById("toggleDark");
   
     let generating = false;
-    let skipStream  = false;
+    let skipStream  = false; 
     let currentBot  = null;
     let firstToken  = true;
   
@@ -131,7 +132,11 @@
     function autoResize() {
       inp.style.height = "auto";
       inp.style.height = inp.scrollHeight + "px";
-      actionBtn.disabled = generating || !inp.value.trim();
+
+      // LÓGICA CLAVE:
+      // Se deshabilita SÓLO SI no está generando Y el input está vacío.
+      // Si 'generating' es true, el botón se HABILITA.
+      actionBtn.disabled = !generating && !inp.value.trim();
     }
   
     function atBottom() {
@@ -149,7 +154,7 @@
   
     inp.addEventListener("input", autoResize);
   
-    /* ───────── Conexión WebSocket (http ⇢ ws, https ⇢ wss) ───────── */
+    /* ───────── Conexión WebSocket ───────── */
     const WS_SCHEME = window.location.protocol === "https:" ? "wss://" : "ws://";
     const ws = new WebSocket(`${WS_SCHEME}${window.location.host}/ws/chat/`);
   
@@ -162,9 +167,19 @@
   
     ws.onmessage = ({ data }) => {
       const msg = JSON.parse(data);
-      if (msg.type === "stream" && (skipStream || !generating)) return;
+
+      // Si se canceló, ignora cualquier token "zombie" que llegue tarde
+      if (msg.type === "stream" && skipStream) {
+        console.log("Skipping zombie token:", msg.content);
+        return;
+      }
   
       if (msg.type === "stream") {
+        // Aseguramos el estado correcto mientras se genera
+        generating = true;
+        actionBtn.textContent = "Detener";
+        actionBtn.disabled = false;
+        
         if (!currentBot) {
           currentBot = bubble("bot", "");
           currentBot.classList.add("loading");
@@ -187,49 +202,77 @@
       }
   
       if (msg.type === "done") {
+        console.log("Stream done");
         finishResponse();
         return;
       }
   
       if (msg.type === "cancelled") {
-        skipStream = true;
-        finishResponse("[Detenido]");
+        console.log("Stream cancelled by backend");
+        skipStream = true; // Por si acaso
+        finishResponse("[Detenido por el usuario]");
       }
     };
   
     function finishResponse(suffix = "") {
+      console.log("Finishing response");
       generating = false;
+      skipStream = false; 
       actionBtn.textContent = "Enviar";
+      
       if (currentBot) {
         currentBot.classList.remove("loading");
         currentBot.textContent += suffix;
         currentBot = null;
       }
-      autoResize();
+      // Llamar a autoResize para que deshabilite el botón
+      // si el input está vacío.
+      autoResize(); 
     }
   
     /* ───────── Eventos de envío ───────── */
     actionBtn.addEventListener("click", () => {
-      if (generating) return;
-      const text = inp.value.trim();
-      if (!text) return;
-      bubble("user", text);
-      skipStream = false;
-      ws.send(JSON.stringify({ message: text }));
-      inp.value = "";
-      generating = true;
-      actionBtn.textContent = "Generando";
-      autoResize();
+      
+      if (generating) {
+        // --- LÓGICA DE CANCELAR (CORREGIDA) ---
+        console.log("CANCEL button clicked");
+        ws.send(JSON.stringify({ cancel: true }));
+        skipStream = true;
+        
+        // NO llamar a finishResponse aquí.
+        // Solo dar feedback visual inmediato.
+        actionBtn.textContent = "Deteniendo...";
+        actionBtn.disabled = true; // Deshabilitar HASTA que el backend confirme.
+
+      } else {
+        // --- LÓGICA DE ENVIAR ---
+        console.log("SEND button clicked");
+        const text = inp.value.trim();
+        if (!text) return;
+        
+        bubble("user", text);
+        skipStream = false;
+        firstToken = true; 
+        ws.send(JSON.stringify({ message: text }));
+        
+        inp.value = "";
+        generating = true;
+        actionBtn.textContent = "Detener"; // ¡Texto correcto!
+        actionBtn.disabled = false; // ¡Habilitar explícitamente!
+      }
     });
   
     inp.addEventListener("keydown", e => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        actionBtn.click();
+        if (!actionBtn.disabled) {
+          actionBtn.click();
+        }
       }
     });
+
     /* ───────── Modo oscuro / claro ───────── */
     darkBtn.onclick = () => document.body.classList.toggle("dark");
-  </script>  
+  </script>
 </body>
 </html>
